@@ -514,3 +514,61 @@ Git 支持两种标签：轻量标签（lightweight）与 附注标签（annotat
 通过 `git show` 可以看到标签信息和与之对应的提交信息。
 
 #### 轻量标签
+
+另一种给提交打标签的方式是使用轻量标签。轻量标签本质是将提交校验和存储到一个文件中--没有保存其他任何信息。
+
+#### 后期打标签
+
+可以将标签直接打到某个提交
+>git tag -a v1.2 439776f62b06dff3729183c660ee601f87a4b126
+
+#### 共享标签
+
+默认情况下，`git push` 不会传送标签到远程仓库。必须显示设置`git push origin <tagname>`。
+
+如果一次推送很多标签，也可以使用`--tags` 选线的`git push` 命令。这将会把所有不在远程仓库的标签全部推送过去。`git push <remote> --tags` 会推送两种标签。
+
+#### 删除标签
+
+`git tag -d <tagname>` 可以删除标签。但这个操作不能移除远程仓库的标签。你必须使用`git push <remote> :refs/tags/<tagname>` 来更新你的远程仓库。
+
+第一种变体是`git push <remote> :refs/tags/<tagname>`：
+> git push origin :refs/tags/v1.4-lw
+
+上面操作的含义是将冒号前面的空值推送到远程标签名，从而高效的删除它。
+
+第二种更加直观的删除远程标签的方式是：
+> git push origin --delete <tagname>
+
+#### 检出标签
+
+如果你想看某个标签指向的文件版本，可以使用`git checkout`，虽然这会使你的仓库处于“分离头指针” 的状态--这个状态有些不好的副作用：
+
+在”分离头指针“状态下，如果你做了某些改变然后提交它们，标签不会发生变化，但你的新提交不会属于任何分支，并且将无法访问，除非通过确切的提交哈希才能访问。如果你需要提交，你需要创建一个新分支：
+>git checkout -b \<branch> \<tagname>
+
+如果在这之后进行了提交，branch 分支就会向前移动，此时它就会和 tagname 稍微有些不同，需要注意。
+
+### Git 别名
+
+Git 可以设置别名，通过`git conifg`:
+>git config --global alias.co checkout
+>git config --global alias.br branch
+>git config --global alias.ci commit
+>git config --global alias.st status
+
+这意味这，当需要输入`git commit` 是，只需要输入`git ci`。随着你继续不断使用Git，可能经常用到其他命令，所以创建别名是不要犹豫。
+
+>git config --global alias.unstage 'reset HEAD --'
+
+会使下面两个命令等价:
+><pre>git unstaged fileA
+>git reset HEAD -- fileA
+></pre>
+
+这样看起来更清楚一些。通常会添加一个`last` 命令：
+>git config --global alias.last 'log -1 HEAD'
+
+这样，可以轻松看到最后一次提交。
+
+如果你想执行外部命令。那样的话，可以在命令前面加入`!` 号。
