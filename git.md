@@ -572,3 +572,83 @@ Git 可以设置别名，通过`git conifg`:
 这样，可以轻松看到最后一次提交。
 
 如果你想执行外部命令。那样的话，可以在命令前面加入`!` 号。
+
+
+## Git 分支
+Git 分支异常轻量，创建分支几乎能在一瞬间完成，而切换分支也同样快捷。Git 鼓励在开发中频繁的使用分支和合并。理解这一特性，将改变开发方式。
+
+### 分支简介
+
+暂存操作会为每一个文件计算校验和，然后会把当前版本的文件快照保存到 Git 仓库中（Git 使用 blob 对象来保存他们），最终将校验和放入暂存区：
+><pre>
+>git add README test.rb LICENSE
+>git commit -m 'init'
+></pre>
+
+当使用`git commit` 进行提交操作时，Git 会先计算每一个子目录的校验和，然后在 Git 仓库中这些校验和保存为树对象。随后，Git 便会创建一个提交对象，它除了包含上面的信息，还包含指向这个树对象的指针。
+
+现在，Git 仓库有5个对象：3个blob 对象，1个树对象（记录目录结构时blob对象的索引） 以及一个提交对象（包含着树对象和提交信息）。
+
+![commit-and-tree](https://git-scm.com/book/en/v2/images/commit-and-tree.png)
+
+做了些修改后在提交，那么这次提交会包含着一个父对象指向上次提交的指针。
+
+![commits-and-parents](https://git-scm.com/book/en/v2/images/commits-and-parents.png)
+
+Git 的分支，其实本质仅仅是指向提交对象的可变指针。Git 的默认分支名字是`master`。`master` 分支会在每次提交后自动向前移动。
+
+> Git 的 `master` 并不是一个特殊分支，和其他分支没有分别。只是它是初始默认分支。并且大多数人都懒得去修改它。
+
+![branch-and-history](https://git-scm.com/book/en/v2/images/branch-and-history.png)
+
+#### 分支创建
+
+`git branch` 可以创建分支。
+
+> git branch testing
+
+![two-branches](https://git-scm.com/book/en/v2/images/two-branches.png)
+
+在 Git 中，有一个名为 `HEAD` 的指针，指向当前所在的本地分支。`git branch` 只会创建分支，并不会将`HEAD`指针移动到新的分支。
+
+![head-to-master](https://git-scm.com/book/en/v2/images/head-to-master.png)
+
+你可以使用 `git log` 查看各个分支当前所指的对象。参数是`--decorate`
+
+#### 分支切换
+
+`git checkout` 可以切换分支。
+>git checkout testing
+
+这样`HEAD` 就指向 `testing` 了。
+
+![head-to-testing](https://git-scm.com/book/en/v2/images/advance-testing.png)
+
+当我们在提交一次后。
+><pre>
+>vim test.rb
+>git commit -a -m 'made a change'
+></pre>
+
+![advance-testing](https://git-scm.com/book/en/v2/images/advance-testing.png
+)
+
+可以看到 `testing` 分支向前移动了，而`master` 分支并没有。它仍然指向运行着`git checkout` 时所指向的对象。
+
+我们在切回 `master` 分支。
+
+>git checkout master
+
+![checkout-master](https://git-scm.com/book/en/v2/images/checkout-master.png)
+
+这条命令做了两件事。一是使`HEAD`指针指向了`master` 分支，而是将工作目录恢复成`master` 分支所指向的快照内容。也就是说，你现在做修改的话，将始于一个较旧的版本，也就是忽略`testing`分支的修改。
+
+>分支切换会改变你工作目录的文件。
+>在切换分支时，一定要注意你工作目录的文件会被改变。如果不能干净
+>的完成这个任务，将会禁止分支切换，防止工作内容丢失。
+
+![advance-master](https://git-scm.com/book/en/v2/images/advance-master.png)
+
+你可以简单的使用 `git log` 命令查看分支历史。运行`git log --oneline --decorate --graph --all`，他会输出你的提交历史、各个分支的指向以及项目的分支分叉情况。
+
+通常我们会创建一个分支并且切换过去，这可以使用`git checkout -b <newbranchname>` 一条命令完成。
