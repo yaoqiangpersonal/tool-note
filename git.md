@@ -652,3 +652,198 @@ Git 的分支，其实本质仅仅是指向提交对象的可变指针。Git 的
 你可以简单的使用 `git log` 命令查看分支历史。运行`git log --oneline --decorate --graph --all`，他会输出你的提交历史、各个分支的指向以及项目的分支分叉情况。
 
 通常我们会创建一个分支并且切换过去，这可以使用`git checkout -b <newbranchname>` 一条命令完成。
+
+### 分支的新建与合并
+
+使用分支能多条线路前进。
+
+#### 新建分支
+
+![basic-branching-1](https://git-scm.com/book/en/v2/images/basic-branching-1.png)
+
+原本的分支是这样的。
+
+当使用`git checkout -b iss53` 之后时。
+
+![basic-branching-2](https://git-scm.com/book/en/v2/images/basic-branching-2.png)
+
+然后在新的分支上做一些提交
+
+>vim index.html
+>git commit -a -m 'added a new footer [issue 53]
+
+![basic-branching-3](https://git-scm.com/book/en/v2/images/basic-branching-3.png)
+
+此时有个需求突然需要你修改，但此时`iss53`还没有完成。此时需要你切回`master` 分支，不过在切换之前，需要留意你工作目录和暂存区里那些还没有被提交的修改，它可能和你即将检出的分支有冲突从而阻止 Git 切换到该分支。最好的方法，在你切换分支之前，保持好一个干净状态。有一些方法可以绕过这些问题（暂存（stashing）和 修补提交（commit amending），后面会提到。现在，可以把分支切回`master`了。请注意，切换分支会充值工作区目录。
+
+>git checkout master
+
+在 `master`上进行修改。
+
+![basic-branching-4](https://git-scm.com/book/en/v2/images/basic-branching-4.png)
+
+确保正确后，将 `hotfix` 合并回你的`master`上面。
+
+><pre>git checkout master
+>git merge hotfix
+>Updating f42c576..3a0874c
+>Fast-forward
+>  index.html | 2 ++
+>  1 file changed, 2 insertions(+)
+> </pre>
+
+在合并的时候有个词需要特别关注`快进（fast-forwar）`。这个词的意思就是简单的将指针向前推进，因为两个分支没有冲突的地方。
+
+![basic-branching-5](https://git-scm.com/book/en/v2/images/basic-branching-5.png)
+
+当合并完成和，你应该先删除`hotfix`分支，因为已经不需要它了--`master` 已经指向同一个位置，留着反而有可能造成混乱。
+>git branch -d hotfix
+
+现在你可以切回`iss53` 分支继续工作。
+>git checkout iss53
+
+![basic-branching-6](https://git-scm.com/book/en/v2/images/basic-branching-6.png)
+
+你在`hotfix`上的工作并没有包含到`iss53`中。
+
+#### 分支的合并
+
+当你完成`iss53` 后，将其并入`master`中，这和之前的工作差不多。
+><pre>git checkout master
+>Switched to branch 'master'
+>git merge iss53
+>Merge made by the 'recursive' strategy.
+>index.html | 1 +
+>1 file changed, 1 insertion(+)
+></pre>
+
+这和之前的状况似乎不一样。你的开发历史从一个更早的地方开始分叉（diverged）。Git 不得不做一些额外的工作，这称为三方合并。
+
+![basic-merging-1](https://git-scm.com/book/en/v2/images/basic-merging-1.png)
+
+和之前直接推进不同，Git 将此次三方合并的结果做了一个新的快照并且自动创建一个新的提交指向它。这个被称作一次合并提交，它的特别之处在于它有不止一个父提交。
+
+![basic-merging-2](https://git-scm.com/book/en/v2/images/basic-merging-2.png)
+
+#### 遇到冲突时的分支合并
+
+很多情况不会如此顺利。经常在两个分支中对同一个文件做了不同的修改，此时 Git 没办法干净的合并他们。
+
+><pre>
+>git merge iss53
+>Auto-merging index.html
+>CONFLICT (content): Merge conflict in index.html
+>Automatic merge failed; fix conflicts and then commit the result.
+></pre>
+
+此时 Git 做了合并，但是并没有自动创建一个提交。 Git 会暂停下来，等待你去解决合并产生的冲突。你可以使用`git status` 查看。
+><pre>
+>git status
+>On branch master
+>You have unmerged paths.
+>  (fix conflicts and run "git commit")
+>Unmerged paths:
+>  (use "git add <file>..." to mark resolution)
+>  both modified: index.html
+>no changes added to commit (use "git add" and/or "git commit -a")
+><pre>
+
+Git 会在冲突文件中加入标识。
+><pre>
+><<<<<<< HEAD:index.html
+><div id="footer">contact : email.support@github.com</div>
+>=======
+><div id="footer">
+> please contact us at support@github.com
+></div>
+>>>>>>>> iss53:index.html
+><pre>
+上半部分为当前分支的部分。下班部分为合并部分的内容。以`======` 为分界。
+
+当冲突被解决时，对每个文件使用`git add` 命令将其标记为冲突已解决。一旦暂存这些原本的冲突文件，Git 就会将他们标记为冲突已解决。
+
+当完成在使用`git status` 查看状态，可以看到冲突已经解决。
+
+### 分支管理
+
+`git branch` 不仅可以创建和删除分支。不加参数的时候，会获得分支列表。
+><pre>
+>git branch
+>  iss53
+>* master
+>  testing
+
+前面有`*` 号表示当前分支。如果需要查看每个分支的最后一次提交，可以运行`git branch -v` 命令。
+
+`--merged` 和 `--no-merged` 这两个选项可以过滤这个列表中已经合并和未合并到当前分支的分支。
+
+如果包含未被合并的工作，则不允许删除，如果要强制删除`git branch -D` 命令来删除。
+
+你可以总是查看合并分支而不检出他们
+><pre>
+>git checkout testing
+>git branch --no-merged master
+> topicA
+> featureB
+> </pre>
+
+### 分支工作流
+
+介绍一些工作模式。
+
+#### 长期分支
+
+你可以在`master` 分支保留稳定的代码。然后分出一些名为`develop` 或者 `next` 的平行分支。等他们稳定之后在合并到`master` 分支中。这能维持一定的稳定性。
+
+![lr-branches-1](https://git-scm.com/book/en/v2/images/lr-branches-1.png)
+
+通常我们会把他们想象成流水线（work silos）可能更好理解一点，那些经过测试和考验的提交被宣导更加稳定的流水线上去。
+
+![lr-branched-2](https://git-scm.com/book/en/v2/images/lr-branches-2.png)
+
+#### 主题分支
+
+这种分支使用最多，作为一个短期分支。只为实现某一个功能或者修复某一个bug。在完成任务之后即被删去。虽然时短期分支，依然可以长时间保存，等待方案确定了之后在删除，时间是不定的。
+
+### 远程分支
+
+当我们使用 `git clone` 的时候，大概流程如下。
+
+![remote-branches-1](https://git-scm.com/book/en/v2/images/remote-branches-1.png)
+
+如果你在本地`master` 分支做了一些工作，在同一段时间内有其他人推送提交到`origin` 并且更新的了它的`master` 分支，这个就是说你们的提交历史已走向不同的方向。即便这样，只要你保持不与`origin` 服务器连接（并拉取数据），你的`origin/master` 指针就不会移动。
+
+![remote-branches-2](https://git-scm.com/book/en/v2/images/remote-branches-2.png)
+
+如果要给给定的仓库同步数据，运行`git fetch <remote>` 命令。
+这个命令查找"origin" 是哪一个服务器，从中抓取本地没有的数据，并且更新本地数据库，移动`origin/master` 指针到更新之后的位置。
+
+![remote-branches-3](https://git-scm.com/book/en/v2/images/remote-branches-3.png)
+
+#### 推送
+
+当你想要公开分享一个分支时，需要将其推送到有写入权限的远程仓库上。本地的分支并不会自动与远程仓库同步--你必须显示设置你想要推送的分支`git push <remote> <branch>`。
+
+`git push origin serverfix:serverfix`，它会用本地的`serverfix` 来覆盖远程的`serverfix` 分支。如果你想改名，你可以使用`git push origin serverfix:awesomebranch` 来将本地的`serverfix` 分支推送到`awesomebranch` 分支。
+
+如果你使用https 来推送，每次都会询问用户名和密码。
+
+如果你不想在每一次推送时都输入用户名和密码，你可以设置一个"credential cache"。最简单的方式就是将其保存在内存中几分钟。可以运行`git config --global credential.helper cache` 来设置它。
+
+注意当抓取新的远程跟踪分支时，本地不会自动生成一份可编辑的副本。换一句话说，这种情况下，不会有一个新的`serverfix` 分支--- 只有一个不可以修改的`origin/serverfix` 指针。
+
+可以运行`git merge origin/serverfix` 将这些工作合并到当前所在的分支。如果想要在自己的`serverfix` 分支上工作，可以将其建立在远程跟踪分支之上。
+
+><pre>
+>git checkout -b serverfix origin/serverfix
+>Branch serverfix set up to track remote branch serverfix from origin.
+>Switched to a new branch 'serverfix'
+
+这会给你的一个用于工作的本地分支，并且起点位于`origin/serverfix`。
+
+
+
+
+
+
+
