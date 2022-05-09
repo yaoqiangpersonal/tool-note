@@ -841,7 +841,9 @@ Git 会在冲突文件中加入标识。
 
 这会给你的一个用于工作的本地分支，并且起点位于`origin/serverfix`。
 
+当克隆一个仓库时，它通常会自动创建一个跟踪`orgin/master` 的 `master` 分支。也可以不跟踪`master` 分支，最简单的方式时`git checkout -b <branch> <remote>/<branch>`。这个操作常用，所以提供的 `--track` 快捷方式。
 
+11
 
 
 
