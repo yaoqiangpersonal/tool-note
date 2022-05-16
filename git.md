@@ -89,6 +89,54 @@
     - [主管与副主管工作流](#主管与副主管工作流)
   - [向一个项目共享](#向一个项目共享)
     - [提交准则](#提交准则)
+- [Git 工具](#git-工具)
+  - [选择修订版本](#选择修订版本)
+    - [简短的 SHA-1](#简短的-sha-1)
+    - [分支引用](#分支引用)
+    - [引用日志](#引用日志)
+    - [祖先引用](#祖先引用)
+    - [提交区间](#提交区间)
+      - [双点](#双点)
+      - [多点](#多点)
+      - [三点](#三点)
+  - [交互式暂存](#交互式暂存)
+    - [暂存与取消暂存文件](#暂存与取消暂存文件)
+    - [暂存补丁](#暂存补丁)
+    - [贮藏与清理](#贮藏与清理)
+    - [贮藏工作](#贮藏工作)
+    - [从贮藏中创建一个分支](#从贮藏中创建一个分支)
+    - [清理工作目录](#清理工作目录)
+  - [搜索](#搜索)
+    - [Git Grep](#git-grep)
+    - [Git 日志搜索](#git-日志搜索)
+      - [行日志搜索](#行日志搜索)
+  - [重写历史](#重写历史)
+    - [修改最后一次提交](#修改最后一次提交)
+    - [修改多个提交信息](#修改多个提交信息)
+    - [重新排序提交](#重新排序提交)
+    - [压缩提交](#压缩提交)
+    - [拆分提交](#拆分提交)
+    - [核武级选项：filter-branch](#核武级选项filter-branch)
+      - [从每一个提交中移除一个文件](#从每一个提交中移除一个文件)
+      - [使一个子目录作为新的根目录](#使一个子目录作为新的根目录)
+      - [全局修改邮箱地址](#全局修改邮箱地址)
+    - [重置揭秘](#重置揭秘)
+      - [三棵树](#三棵树)
+      - [HEAD](#head)
+      - [索引](#索引)
+      - [工作目录](#工作目录)
+    - [工作流程](#工作流程)
+    - [重置的作用](#重置的作用)
+      - [第一步：移动 HEAD](#第一步移动-head)
+      - [第二步：更新索引（--mixed）](#第二步更新索引--mixed)
+      - [第三步：更新工作目录（--hard）](#第三步更新工作目录--hard)
+      - [回顾](#回顾)
+    - [通过路径来重置](#通过路径来重置)
+    - [压缩](#压缩)
+    - [检出](#检出)
+      - [不带路径](#不带路径)
+      - [带路径](#带路径)
+    - [总结](#总结)
 [toc]
 简单的学习网站
 [https://learngitbranching.js.org/?locale=zh_CN](https://learngitbranching.js.org/?locale=zh_CN)
@@ -1140,3 +1188,437 @@ Git 可以使用四种不同的协议来传输资料：本地协议（Local）�
 如果其中一些改动修改了同一个文件，尝试使用 git add --patch 来部分暂存文件（在 交互式暂存 中有详细介绍）。 不管你做一个或五个提交，只要所有的改动都曾添加过，项目分支末端的快照就是一样的，所以尽量让你的开发者同事们在审查你的改动的时候更容易些吧。
 
 最后一件要牢记的事是提交信息。 有一个创建优质提交信息的习惯会使 Git 的使用与协作容易的多。
+
+## Git 工具
+
+一些不常用，但可能使用的操作。
+
+### 选择修订版本
+
+#### 简短的 SHA-1
+
+`git log --abbrev-commit` 可以生成简短的SHA-1
+
+#### 分支引用
+
+`git rev-parse master` 可以分支指向特定的SHA-1。
+
+#### 引用日志
+
+当你在工作时，Git 会在后台保存一个应用日志（reflog），引用日志记录了最近几个月你的HEAD和分支引用所指向的历史。
+
+你可以使用`git reflog` 来查看引用日志。
+
+#### 祖先引用
+
+`git show HEAD^` 可以指向`HEAD`的父提交。这和`git show HEAD~` 是等价的。`HEAD~2`代表`HEAD`的父提交的父提交。也可以写成`HEAD~~`。
+
+#### 提交区间
+
+##### 双点
+
+这时最常用的语法。这种语法可以选出在一个分支中而不再另一个分支中的提交。`git log master..experiment` 的意思表示，在`experiment` 分支中，而不再`master`分支中的日志。如果默认留空，Git 会默认为`HEAD`。例如，`git log origin/master..` 将会输出会被传输到远端服务器的提交。
+
+##### 多点
+
+一下三个命令是等价的。
+
+>git log refA..refB
+>git log ^refA refB
+>git log refB --not refA
+
+这个语法很好用，因为你可以在查询中指定超过两个的引用，这是双点语法无法实现的。比如，你想查看所有 被 refA 或 refB 包含的但是不被 refC 包含的提交，你可以使用以下任意一个命令：
+>git log refA refB ^refC
+>git log refA refB --not refC
+
+##### 三点
+
+如果你想看 master 或者 experiment 中包含的但不是两者共有的提 交，你可以执行`git log master...experiment`。常用命令`git log --left-right master...experiment` 可以指出提交所在分支。
+
+### 交互式暂存
+
+#### 暂存与取消暂存文件
+
+使用`git add -i` 或者`--interactive` 选项，Git 建辉进入一个交互终端模式。这个命令可以有选择性的暂存文件，生成不同的提交。
+
+#### 暂存补丁
+
+Git 也可以暂存文件的特定部分。例如，如果在 simplegit.rb 文件中做了两处修改，但指向要暂存其中一个。可以输入`p` 或 `5`。Git 会询问你想要部分暂存哪些文件
+
+可以在命令行中使用`git add -p` 或 `git add --patch` 来启动同样的脚本。更进一步的，可以使用`git reset --patch` 命令的补丁模式来部分重置文件，通过`git checkout --patch` 命令来部分检出文件与`git stash save --patch` 命令来部分暂存文件。
+
+#### 贮藏与清理
+
+有时，当你在项目的一部分上已经工作一段时间后，所有东西都进入了混乱的状态， 而这时你想要切换到另一 个分支做一点别的事情。 问题是，你不想仅仅因为过会儿回到这一点而为做了一半的工作创建一次提交。 针对这个问题的答案是 `git stash` 命令。
+
+贮藏（stash）会处理工作目录的脏的状态——即跟踪文件的修改与暂存的改动——然后将未完成的修改保存到一 个栈上， 而你可以在任何时候重新应用这些改动（甚至在不同的分支上）。
+
+#### 贮藏工作
+
+对文件做一些修改。突然向切换分支，但是还不想提交之前的工作；所以贮藏修改。将新的贮藏推送到栈上，运行`git stash` 或者`git stash push`。之后在运行`git status`可以看见工作目录是干净的。
+
+此时，你可以切换到其他分支。想要查看贮藏的东西，可以使用`git stash list`。如果想要应用一个贮藏，可以使用`git stash apply`。这个命令可以将刚才保存的贮藏重新运用于当前分支。如果想要使用一个更久的贮藏，可以使用`git stash apply stash@{2}`。如果不指定，Git 认为指定的是最近的贮藏。可以使用`git stash drop` 加上将要移除的贮藏名字来移除它。也可以使用`git stash pop` 来引用然后从栈上扔掉它。
+
+#### 从贮藏中创建一个分支
+
+`git stash branch <new branchname>` 可以以你指定的分支名创建一个新分支，检出贮藏工作时所在的提交，重新在哪应用工作，人后在应用成功后丢弃贮藏。
+
+#### 清理工作目录
+
+对于工作目录中一些工作或文件，你想做的也许不是贮藏而是移除。 `git clean` 命令就是用来干这个的。你需要谨慎地使用这个命令，因为它被设计为从工作目录中移除未被追踪的文件。 如果你改变主意了，你也不 一定能找回来那些文件的内容。 一个更安全的选项是运行 `git stash --all` 来移除每一样东西并存放在栈中。
+
+你可以使用 `git clean` 命令去除冗余文件或者清理工作目录。 使用 `git clean -f -d` 命令来移除工作目录 中所有未追踪的文件以及空的子目录。 `-f` 意味着“强制（force）”或“确定要移除”，使用它需要 Git 配置变量 `clean.requireForce` 没有显式设置为 `false`。
+
+如果只是想要看看它会做什么，可以使用 `--dry-run` 或 `-n` 选项来运行命令， 这意味着“做一次演习然后告诉 你 将要 移除什么”。默认情况下，`git clean` 命令只会移除没有忽略的未跟踪文件。 任何与 `.gitignore` 或其他忽略文件中的模 式匹配的文件都不会被移除。 如果你也想要移除那些文件，例如为了做一次完全干净的构建而移除所有由构建生成的 `.o` 文件， 可以给 `clean` 命令增加一个 `-x` 选项。
+
+如果不知道 `git clean` 命令将会做什么，在将 `-n` 改为 `-f` 来真正做之前总是先用 `-n` 来运行它做双重检查。 另 一个小心处理过程的方式是使用 `-i` 或 “interactive” 标记来运行它。
+
+如果你恰好在工作目录重复制或克隆了其他Git 仓库（可能时子模块），那么即便时`git clean -fd` 都会拒绝删除这些目录。这种情况，你需要加上第二个`-f` 选项来强调。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### 搜索
+
+Git 提供了两个有用的工具来快速地从它的数据库中浏览代码和提交。
+
+#### Git Grep
+
+Git 提供一个 `grep` 命令，你可以很方便的从提交历史、工作目录、甚至索引中查找一个字符串或者正则表达式。
+
+可以是使用`-n` 或者`--line-numer` 选项来输出Git 找到的匹配行的行号。
+
+除了上面的基本搜索命令外，`git grep` 还支持大量其他有趣的选项。
+
+`-c` 或 `--count` 可以输出概述信息，只包含匹配字符串的文件，以及每个文件中包好了多少个匹配。如果你还关心上下文，你可以传入`-p` 或 `--show function` 来显示每一个匹配的字符所在的方法或者函数。
+
+你还可以使用`--and` 来查看复杂的字符串组合，它确保了多个匹配出现在同一文本行中。
+
+><pre>git grep --break --heading -n -e '#defind' --and \( -e LINK -e BUF_MAX \) v1.8.0</pre>
+
+
+
+
+#### Git 日志搜索
+
+或者你不想知道某一项在**哪里**,而是iang知道是什么**时候**存在或引入的。`git log -S` 可以帮助你。如果你希望得到更加精确的结果，你可以使用`-G` 选项来使用正则表达式搜索。
+
+##### 行日志搜索
+
+`git log -L` 可以展示变更。
+><pre>git log -L :git_deflate_bound:zlib.c</pre>
+
+### 重写历史
+
+在满意之前不要推送你的工作
+
+Git 的基本原则之一是，由于克隆中有很多工作是本地的，因此你可以 在本地 随便重写历史记 录。 然而一旦推送了你的工作，那就完全是另一回事了，除非你有充分的理由进行更改，否 则应该将推送的工作视为最终结果。 简而言之，在对它感到满意并准备与他人分享之前，应当避免推送你的工作。
+
+#### 修改最后一次提交
+
+`git commit --amend` 可以修改最后一次提交。如果不需要重写提交消息`git commit --amend --no-edit` 就可以了。如果提交已经推送，想要再次推送得加上`-f`。
+
+#### 修改多个提交信息
+
+`git rebase -i` 可以变基一系列的提交。
+>git rebase -i HEAD~3
+
+再次记住这是一个变基命令——在 `HEAD~3..HEAD` 范围内的每一个修改了提交信息的提交及其**所有后裔**都会被 重写。 不要涉及任何已经推送到中央服务器的提交——这样做会产生一次变更的两个版本，因而使他人困惑。
+
+注意其中的反序显示。 交互式变基给你一个它将会运行的脚本。 它将会从你在命令行中指定的提交`（HEAD~3）` 开始，从上到下的依次重演每一个提交引入的修改。 它将最旧的而不是最新的列在上面，因为那会是第一个将要重演的。
+
+你需要修改脚本来让它停留在你想修改的变更上。 要达到这个目的，你只要将你想修改的每一次提交前面的 ‘pick’ 改为 ‘edit’。
+
+>edit f7f3f6d changed my name a bit 
+>pick 310154e updated README formatting and added blame
+>pick a5f4a0d added cat-file
+
+当保存并退出编辑器时，Git 将你带回到列表中的最后一次提交，把你送回命令行并提示以下信息：
+
+><pre>git rebase -i HEAD~3 
+>Stopped at f7f3f6d... changed my name a bit 
+>You can amend the commit now, with
+>
+>    git commit --amend
+>
+>Once you're satisfied with your changes, run
+>
+>    git rebase --continue</pre>
+
+按照信息提示持续输入即可。
+
+#### 重新排序提交
+
+在交互页面重新排序或者删除。
+
+#### 压缩提交
+
+通过交互式变基工具，也可以将一连串提交压缩成一个单独的提交。
+
+如果，指定 “squash” 而不是 “pick” 或 “edit”，Git 将应用两者的修改并合并提交信息在一起。
+
+如果想把3个合并为一次提交，可以这样修改脚本：
+
+>pick f7f3f6d changed my name a bit squash 310154e 
+>updated README formatting and added blame
+>squash a5f4a0d added cat-file
+
+#### 拆分提交
+
+拆分一个提交会撤消这个提交，然后多次地部分地暂存与提交直到完成你所需次数的提交。 例如，假设想要拆 分三次提交的中间那次提交。 想要将它拆分为两次提交：第一个 “updated README formatting”，第二个 “added blame” 来代替原来的 “updated README formatting and added blame”。 可以通过修改`rebase -i` 的脚本来做到这点，将要拆分的提交的指令修改为 “edit”:
+
+>pick f7f3f6d changed my name a bit
+>edit 310154e updated README formatting and added blame
+>pick a5f4a0d added cat-file
+
+可以通过 `git reset HEAD^` 做一次针对那个提交的混合重置，实 际上将会撤消那次提交并将修改的文件取消暂存。 现在可以暂存并提交文件直到有几个提交，然后当完成时运行 `git rebase --continue`：
+
+>git reset HEAD^ 
+>git add README
+>git commit -m 'updated README formatting' $ git add lib/simplegit.rb 
+>git commit -m 'added blame'
+>git rebase --continue
+
+#### 核武级选项：filter-branch
+
+有另一个历史改写的选项，如果想要通过脚本的方式改写大量提交的话可以使用它——例如，全局修改你的邮箱 地址或从每一个提交中移除一个文件。 这个命令是 `filter-branch`，它可以改写历史中大量的提交，除非你 的项目还没有公开并且其他人没有基于要改写的工作的提交做的工作，否则你不应当使用它。 然而，它可以很有用。 你将会学习到几个常用的用途，这样就得到了它适合使用地方的想法。
+
+`git filter-branch` 有很多陷阱，不再推荐使用它来重写历史。 请考虑使用 `gitfilter-repo`，它是一个 Python 脚本，相比大多数使用 `filter-branch` 的应用来说，它做得要更好。它的文档和源码可访问 https://github.com/newren/git-filter-repo 获取。
+
+##### 从每一个提交中移除一个文件
+
+为了从整个提交历史中移除一个叫做 passwords.txt 的文件，可以使用 --tree-filter 选项 给 filter-branch，`git filter-branch --tree-filter 'rm -f password.txt' HEAD`。
+
+`--tree-filter` 选项在检出项目的每一个提交后运行指定的命令然后重新提交结果。 在本例中，你从每一个 快照中移除了一个叫作 `passwords.txt` 的文件，无论它是否存在。 如果想要移除所有偶然提交的编辑器备份文件，可以运行类似 `git filter-branch --tree-filter 'rm -f *~' HEAD `的命令。为了让 `filter-branch` 在所有分支上运行，可以给命令传递 `--all` 选项。
+
+##### 使一个子目录作为新的根目录
+
+如果想要让 `trunk` 子目录作为每一个提交的新的项目根目录，`filter-branch` 也可以帮助你那么做：
+
+>git filter-branch --subdirectory-filter trunk HEAD
+
+现在`trunk` 子目录了。Git 会自动移除所有不影响子目录的提交。
+
+##### 全局修改邮箱地址
+
+另一个常见的情形是在你开始工作时忘记运行 `git config` 来设置你的名字与邮箱地址， 或者你想要开源一个 项目并且修改所有你的工作邮箱地址为你的个人邮箱地址。 任何情形下，你也可以通过 `filter-branch` 来一次性修改多个提交中的邮箱地址。 需要小心的是只修改你自己的邮箱地址，所以你使用 `--commit-filter`：
+
+><pre>git filter-branch --commit-filter '
+>         if [ "$GIT_AUTHOR_EMAIL" = "schacon@localhost" ]; 
+>         then
+>                 GIT_AUTHOR_NAME="Scott Chacon"; 
+>                 GIT_AUTHOR_EMAIL="schacon@example.com"; git commit-tree "$@";
+>         else git commit-tree "$@";
+>         fi' HEAD</pre>
+
+
+这会遍历并重写每一个提交来包含你的新邮箱地址。 因为提交包含了它们父提交的 SHA-1 校验和，这个命令会 修改你的历史中的每一个提交的 SHA-1 校验和， 而不仅仅只是那些匹配邮箱地址的提交。
+
+#### 重置揭秘
+
+在继续了解更专业的工具前，我们先探讨一下 Git 的 `reset` 和 `checkout` 命令。
+
+##### 三棵树
+
+理解 `reset` 和 `checkout` 的最简方法，就是以 Git 的思维框架（将其作为内容管理器）来管理三棵不同的树。 “树” 在我们这里的实际意思是 “文件的集合”，而不是指特定的数据结构。 （在某些情况下索引看起来并不像一棵树，不过我们现在的目的是用简单的方式思考它。）
+
+|树|用途|
+|-|-|
+|HEAD|上一次提交的快照，下一次提交的父节点|
+|index|预期的下一次提交的快照|
+|Workgin Directory|沙盒|
+
+
+##### HEAD
+
+HEAD 是当前分支引用的指针，它总是指向该分支上的最后一次提交。 这表示 HEAD 将是下一次提交的父结 点。 通常，理解 HEAD 的最简方式，就是将它看做 该分支上的最后一次提交 的快照。
+
+查看HEAD:
+>git cat-file -p HEAD
+
+查看每个文件的SHA-1校验和：
+>git ls-tree -r HEAD
+
+这两个命令不常用，不过它能帮助你了解到底发生了什么。
+
+##### 索引
+
+索引是你的**预期的下一次提交**。也叫做“暂存区”。
+
+查看索引当前的样子：
+
+>git ls-files -s
+
+##### 工作目录
+
+最后，你就有了自己的**工作目录**（通常也叫做**工作区**）。另外两颗树以一种高效但并不直观的方式，将他们的内容存储在`.git`文件夹中。工作目录会将他们解包为实际的文件以编辑。你可以把工作目录当作**沙盒**。
+
+#### 工作流程
+
+经典的 Git 工作流程是通过操纵这三个区域来以更加连续的状态记录项目快照的。
+
+![reset-workflow](https://git-scm.com/book/en/v2/images/reset-workflow.png)
+
+让我们来可视化这个过程：假设我们进入到一个新目录，其中有一个文件。 我们称其为该文件的 **v1** 版本，将它 标记为蓝色。 现在运行 `git init`，这会创建一个 Git 仓库，其中的 HEAD 引用指向未创建的 `master` 分支。
+
+![reset-ex1](https://git-scm.com/book/en/v2/images/reset-ex1.png)
+
+此时，只有工作目录，没有内容。
+
+现在我们想要提交这个文件，所以用`git add` 来获取工作目录中的内容，并将其复制到索引中。
+
+![reset-ex2](https://git-scm.com/book/en/v2/images/reset-ex2.png)
+
+接着运行`git commit`,它会取得索引中内容并保存为一个永久快照，然后创建一个指向该快照的提交对象，最后更新`master`来指向本次提交。
+
+![reset-ex3](https://git-scm.com/book/en/v2/images/reset-ex3.png)
+
+此时如果我们运行`git status`,会发现没有任何改动，因为现在三棵树完全相同。
+
+现在我们想要对文件进行修改然后提交它。 我们将会经历同样的过程；首先在工作目录中修改文件。 我们称其 为该文件的 v2 版本，并将它标记为红色。
+
+![reset-ex4](https://git-scm.com/book/en/v2/images/reset-ex4.png)
+
+如果现在运行 `git status`，我们会看到文件显示在 “Changes not staged for commit” 下面并被标记为红 色，因为该条目在索引与工作目录之间存在不同。 接着我们运行 `git add` 来将它暂存到索引中。
+
+![reset-ex5](https://git-scm.com/book/en/v2/images/reset-ex5.png)
+
+此时，由于索引和 HEAD 不同，若运行 `git status` 的话就会看到 “Changes to be committed” 下的该文件 变为绿色 ——也就是说，现在预期的下一次提交与上一次提交不同。 最后，我们运行 `git commit` 来完成提交。
+
+现在运行 `git status` 会没有输出，因为三棵树又变得相同了。
+
+切换分支或克隆的过程也类似。 当检出一个分支时，它会修改 **HEAD** 指向新的分支引用，将 **索引** 填充为该次提 交的快照， 然后将 **索引** 的内容复制到 **工作目录** 中。
+
+#### 重置的作用
+
+为了演示这些例子，假设我们再次修改了 `file.txt` 文件并第三次提交它。 现在的历史看起来是这样的：
+
+![reset-start](https://git-scm.com/book/en/v2/images/reset-start.png)
+
+##### 第一步：移动 HEAD
+
+`reset` 做的第一件事是移动 HEAD 的指向。 这与改变 HEAD 自身不同（`checkout` 所做的）；`reset` 移动 `HEAD` 指向的分支。 这意味着如果 `HEAD` 设置为 `master` 分支（例如，你正在 `master` 分支上）， 运行 `git reset 9e5e6a4` 将会使 `master` 指向 `9e5e6a4`。
+
+![reset-soft](https://git-scm.com/book/en/v2/images/reset-soft.png)
+
+无论你调用了何种形式的带有一个提交的 `reset`，它首先都会尝试这样做。 使用 `reset --soft`，它将仅仅停 在那儿。
+
+现在看一眼上图，理解一下发生的事情：它本质上是撤销了上一次 `git commit` 命令。 当你在运行 `git commit` 时，Git 会创建一个新的提交，并移动 `HEAD` 所指向的分支来使其指向该提交。 当你将它 `reset` 回 `HEAD~`（HEAD 的父结点）时，其实就是把该分支移动回原来的位置，而不会改变索引和工作目录。 现在你可以更新索引并再次运行 `git commit` 来完成 `git commit --amend` 所要做的事情了（见 修改最后一次提交）。
+
+##### 第二步：更新索引（--mixed）
+
+注意，如果你现在运行 `git status` 的话，就会看到新的 `HEAD` 和以绿色标出的它和索引之间的区别。 接下来，`reset` 会用 `HEAD` 指向的当前快照的内容来更新索引。
+
+![reset-mixed](https://git-scm.com/book/en/v2/images/reset-mixed.png)
+
+如果指定 `--mixed` 选项，`reset` 将会在这时停止。 这也是默认行为，所以如果没有指定任何选项（在本例中只 是 `git reset HEAD~`），这就是命令将会停止的地方。
+现在再看一眼上图，理解一下发生的事情：它依然会撤销一上次 提交，但还会 取消暂存 所有的东西。 于是，我们回滚到了所有 `git add` 和 `git commit` 的命令执行之前。
+
+##### 第三步：更新工作目录（--hard）
+
+`reset` 要做的的第三件事情就是让工作目录看起来像索引。 如果使用 `--hard` 选项，它将会继续这一步。
+
+![reset-hard](https://git-scm.com/book/en/v2/images/reset-hard.png)
+
+现在让我们回想一下刚才发生的事情。 你撤销了最后的提交、`git add` 和 `git commit` 命令 以及 工作目录中 的所有工作。必须注意，`--hard` 标记是 `reset` 命令唯一的危险用法，它也是 Git 会真正地销毁数据的仅有的几个操作之一。 其他任何形式的 `reset` 调用都可以轻松撤消，但是 `--hard` 选项不能，因为它强制覆盖了工作目录中的文件。 在这种特殊情况下，我们的 Git 数据库中的一个提交内还留有该文件的 v3 版本， 我们可以通过 `reflog` 来找回它。但是若该文件还未提交，Git 仍会覆盖它从而导致无法恢复。
+
+##### 回顾
+
+`reset` 命令会以特定的顺序重写这三棵树，在你指定以下选项时停止：
+
+1. 移动 HEAD 分支的指向 （若指定了 `--soft`，则到此停止）
+2. 使索引看起来像 HEAD （若未指定 `--hard`，则到此停止）
+3. 使工作目录看起来像索引
+
+#### 通过路径来重置
+
+前面讲述了 `reset` 基本形式的行为，不过你还可以给它提供一个作用路径。 若指定了一个路径，`reset` 将会跳 过第 1 步，并且将它的作用范围限定为指定的文件或文件集合。 这样做自然有它的道理，因为 `HEAD` 只是一个 指针，你无法让它同时指向两个提交中各自的一部分。 不过索引和工作目录 可以部分更新，所以重置会继续进行第 2、3 步。
+
+现在，假如我们运行 `git reset file.txt` （这其实是 `git reset --mixed HEAD file.txt` 的简写形 式，因为你既没有指定一个提交的 SHA-1 或分支，也没有指定 `--soft` 或 `--hard`），它会：
+
+1. 移动 HEAD 分支的指向 （已跳过）
+2. 让索引看起来像 HEAD （到此处停止）
+
+所以它本质上只是将 `file.txt` 从 HEAD 复制到索引中。
+
+![reset-path1](https://git-scm.com/book/en/v2/images/reset-path1.png)
+
+它还有 取消暂存文件 的实际效果。 如果我们查看该命令的示意图，然后再想想 `git add` 所做的事，就会发现他们正好相反。
+
+![reset-path2](https://git-scm.com/book/en/v2/images/reset-path2.png)
+
+这就是为什么 `git status` 命令的输出会建议运行此命令来取消暂存一个文件。 （查看 取消暂存的文件 来了 解更多。）
+
+我们可以不让 Git 从 HEAD 拉取数据，而是通过具体指定一个提交来拉取该文件的对应版本。 我们只需运行类似 于 `git reset eb43bf file.txt` 的命令即可。
+
+![reset-path3](https://git-scm.com/book/en/v2/images/reset-path3.png)
+
+它其实做了同样的事情，也就是把工作目录中的文件恢复到 v1 版本，运行 `git add` 添加它， 然后再将它恢复 到 v3 版本（只是不用真的过一遍这些步骤）。 如果我们现在运行 `git commit`，它就会记录一条“将该文件恢复到 v1 版本”的更改， 尽管我们并未在工作目录中真正地再次拥有它。
+
+还有一点同 `git add` 一样，就是 `reset` 命令也可以接受一个 `--patch` 选项来一块一块地取消暂存的内容。 这 样你就可以根据选择来取消暂存或恢复内容了。
+
+#### 压缩
+
+假设你有一个项目，第一次提交中有一个文件，第二次提交增加了一个新的文件并修改了第一个文件，第三次提 交再次修改了第一个文件。 由于第二次提交是一个未完成的工作，因此你想要压缩它。
+
+![reset-squash-r1](https://git-scm.com/book/en/v2/images/reset-squash-r1.png)
+
+那么可以运行 `git reset --soft HEAD~2` 来将 `HEAD` 分支移动到一个旧一点的提交上（即你想要保留的最 近的提交）：
+
+![reset-squash-r2](https://git-scm.com/book/en/v2/images/reset-squash-r2.png)
+
+
+此时你只需运行`git commit`:
+
+![reset-squash-r3](https://git-scm.com/book/en/v2/images/reset-squash-r3.png)
+
+现在你可以查看可到达的历史，即将会推送的历史，现在看起来有个 v1 版 `file-a.txt` 的提交， 接着第二个 提交将 `file-a.txt` 修改成了 v3 版并增加了 `file-b.txt`。 包含 v2 版本的文件已经不在历史中了。
+
+#### 检出
+
+最后，你大概还想知道 `checkout` 和 `reset` 之间的区别。 和 `reset` 一样，`checkout` 也操纵三棵树，不过它 有一点不同，这取决于你是否传给该命令一个文件路径。
+
+##### 不带路径
+
+运行 `git checkout [branch]` 与运行 `git reset --hard [branch]` 非常相似，它会更新所有三棵树使 其看起来像 `[branch]`，不过有两点重要的区别。
+
+首先不同于 `reset --hard，checkout` 对工作目录是安全的，它会通过检查来确保不会将已更改的文件弄 丢。 其实它还更聪明一些。它会在工作目录中先试着简单合并一下，这样所有 还未修改过的 文件都会被更新。而 `reset --hard` 则会不做检查就全面地替换所有东西。
+
+第二个重要的区别是 `checkout` 如何更新 `HEAD`。 `reset` 会移动 `HEAD` 分支的指向，而 `checkout` 只会移动 `HEAD` 自身来指向另一个分支。
+
+例如，假设我们有 `master` 和 `develop` 分支，它们分别指向不同的提交；我们现在在 `develop` 上（所以 `HEAD` 指向它）。 如果我们运行 `git reset master`，那么 `develop` 自身现在会和 `master` 指向同一个提 交。 而如果我们运行 `git checkout master` 的话，`develop` 不会移动，`HEAD` 自身会移动。 现在 `HEAD` 将 会指向 `master`。所以，虽然在这两种情况下我们都移动 `HEAD` 使其指向了提交 A，但 做法 是非常不同的。 `reset` 会移动 `HEAD`分支的指向，而 `checkout` 则移动 `HEAD` 自身。
+
+所以，虽然在这两种情况下我们都移动 `HEAD` 使其指向了提交 A，但 做法 是非常不同的。 `reset` 会移动 `HEAD` 分支的指向，而 `checkout` 则移动 `HEAD` 自身。
+
+![reset-checkout](https://git-scm.com/book/en/v2/images/reset-checkout.png)
+
+##### 带路径
+
+运行 `checkout` 的另一种方式就是指定一个文件路径，这会像 `reset` 一样不会移动 `HEAD`。 它就像 `git reset [branch] file` 那样用该次提交中的那个文件来更新索引，但是它也会覆盖工作目录中对应的文件。 它就像是 `git reset --hard [branch] file`（如果 `reset` 允许你这样运行的话）， 这样对工作目录并不 安全，它也不会移动 `HEAD`。此外，同 `git reset` 和 `git add` 一样，`checkout` 也接受一个 `--patch` 选项，允许你根据选择一块一块地恢复文件内容。
+
+#### 总结
+
+希望你现在熟悉并理解了 `reset` 命令，不过关于它和 `checkout` 之间的区别，你可能还是会有点困惑，毕竟不 太可能记住不同调用的所有规则。下面的速查表列出了命令对树的影响。 “HEAD” 一列中的 “REF” 表示该命令移动了 `HEAD` 指向的分支引 用，而 “HEAD” 则表示只移动了 `HEAD` 自身。 特别注意 WD Safe? 一列——如果它标记为 NO，那么运行该命令之前请考虑一下。
+
+||HEAD|index|workdir|wd safe?|
+|-|-|-|-|-|
+|**Commit Level**|||||
+|reset --soft [commit]|REF|NO|NO|YES|
+|reset [commit]|REF|yes|NO|YES|
+|reset --hard [commit]|REF|yes|YES|no|
+|checkout [commit]|HEAD|yes|YES|YES|
+|**File Level**|||||
+|reset [commit] <paths>|NO|yes|NO|YES|
+|checkout [commit] <paths>|NO|yes|yes|YES|
