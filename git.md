@@ -120,7 +120,7 @@
       - [从每一个提交中移除一个文件](#从每一个提交中移除一个文件)
       - [使一个子目录作为新的根目录](#使一个子目录作为新的根目录)
       - [全局修改邮箱地址](#全局修改邮箱地址)
-    - [重置揭秘](#重置揭秘)
+  - [重置揭秘](#重置揭秘)
       - [三棵树](#三棵树)
       - [HEAD](#head)
       - [索引](#索引)
@@ -137,6 +137,21 @@
       - [不带路径](#不带路径)
       - [带路径](#带路径)
     - [总结](#总结)
+  - [高级合并](#高级合并)
+    - [合并冲突](#合并冲突)
+    - [中断合并](#中断合并)
+    - [忽略空白](#忽略空白)
+    - [手动文件在合并](#手动文件在合并)
+    - [检出冲突](#检出冲突)
+    - [合并日志](#合并日志)
+    - [组合式差异格式](#组合式差异格式)
+    - [撤销合并](#撤销合并)
+      - [修复引用](#修复引用)
+      - [还原提交](#还原提交)
+    - [其他类型的合并](#其他类型的合并)
+      - [我们或他们的偏好](#我们或他们的偏好)
+      - [子树合并](#子树合并)
+  - [Rerere](#rerere)
 [toc]
 简单的学习网站
 [https://learngitbranching.js.org/?locale=zh_CN](https://learngitbranching.js.org/?locale=zh_CN)
@@ -1426,7 +1441,7 @@ Git 的基本原则之一是，由于克隆中有很多工作是本地的，因�
 
 这会遍历并重写每一个提交来包含你的新邮箱地址。 因为提交包含了它们父提交的 SHA-1 校验和，这个命令会 修改你的历史中的每一个提交的 SHA-1 校验和， 而不仅仅只是那些匹配邮箱地址的提交。
 
-#### 重置揭秘
+### 重置揭秘
 
 在继续了解更专业的工具前，我们先探讨一下 Git 的 `reset` 和 `checkout` 命令。
 
@@ -1622,3 +1637,216 @@ HEAD 是当前分支引用的指针，它总是指向该分支上的最后一次
 |**File Level**|||||
 |reset [commit] <paths>|NO|yes|NO|YES|
 |checkout [commit] <paths>|NO|yes|yes|YES|
+
+
+### 高级合并
+
+Git 一般只会处理无冲突的合并。
+
+#### 合并冲突
+
+当文件出现分歧的时候便会出现合并冲突。
+
+#### 中断合并
+
+`git merge --abort` 可以中断一次合并。
+
+#### 忽略空白
+
+`-Xignore-all-space` 或 `-Xignore-space-change` 选项，第一个在比较行时**完全忽略** 空白修改，第二个选项将一个空白符与多个连续的空白字符视作等价的。
+
+#### 手动文件在合并
+
+。。。。。。。忽略
+
+#### 检出冲突
+
+`git checkout --confilict` 可以重新检出文件并替换合并冲突标记。
+
+可以传递给`--confilict` 参数`diff3` 或 `merge`（默认选项）。如果给`diff3`，Git 不仅仅只给你“ours"和"theirs"的版本，同时也会有”base“本本。
+
+如果你喜欢这种格式，可以通过设置 `merge.conflictstyle` 选项为 `diff3` 来做为以后合并冲突的默认选 项。
+
+>git config --global merge.conflictstyle diff3
+
+`git checkout` 命令也可以使用 `--ours` 和 `--theirs` 选项，这是一种无需合并的快速方式，你可以选择留下 一边的修改而丢弃掉另一边修改。
+
+#### 合并日志
+
+为了得到此次合并中包含的每一个分支的所有独立提交的列表， 我们可以使用之前在 <三点 学习的“三点”语 法。
+
+>git log --oneline --left-right HEAD...MERGE_HEAD
+>< f1270f7 update README
+>< 9af9d3b add a README
+>< 694971d update phrase to hola world
+>\> e3eb223 add more tests
+>\> 7cff591 add testing script
+>\> c3ffff1 changed text to hello mundo
+
+使用`--merge`，它只会显示任何一遍接触了合并冲突文件的提交。
+
+如果你运行命令时用 `-p` 选项代替，你会得到所有冲突文件的区别。 快速获得你需要帮助理解为什么发生冲突的 上下文，以及如何聪明地解决它，这会 **非常** 有用。
+
+#### 组合式差异格式
+
+因为 Git 暂存合并成功的结果，当你在合并冲突状态下运行 `git diff` 时，只会得到现在还在冲突状态的区别。 当需要查看你还需要解决哪些冲突时这很有用。....没什么说的，就是展示冲突和解决冲突后的比较文件。
+
+#### 撤销合并
+
+有两种方法。
+
+##### 修复引用
+
+`git reset --hard HEAD` 前面已经介绍了。
+
+##### 还原提交
+
+如果移动分支指针并不适合你，Git 给你一个生成一个新提交的选项，提交将会撤消一个已存在提交的所有修 改。 Git 称这个操作为“还原”，在这个特定的场景下，你可以像这样调用它：
+
+>git revert -m 1 HEAD
+
+`-m 1` 标记指出 “mainline” 需要被保留下来的父结点。 当你引入一个合并到 `HEAD`（git merge topic）， 新提交有两个父结点：第一个是 `HEAD`（C6），第二个是将要合并入分支的最新提交（`C4`）。 在本例中，我们想要撤消所有由父结点 #2（C4）合并引入的修改，同时保留从父结点 #1（`C6`）开始的所有内容。
+
+有还原提交的历史看起来像这样：
+
+![undomerge-revert](https://git-scm.com/book/en/v2/images/undomerge-revert.png)
+
+新的提交 `^M` 与 `C6` 有完全一样的内容，所以从这儿开始就像合并从未发生过，除了“现在还没合并”的提交依 然在 `HEAD` 的历史中。 如果你尝试再次合并 `topic` 到 `master` Git 会感到困惑：
+
+>git merge topic
+>Already up-to-date.
+
+topic 中并没有东西不能从 master 中追踪到达。 更糟的是，如果你在 topic 中增加工作然后再次合并，Git只会引入被还原的合并 之后 的修改。
+
+![undomerge-revert2](https://git-scm.com/book/en/v2/images/undomerge-revert2.png)
+
+
+最好的方式是在此恢复提交，返回到合并时的状态，然后在合并`topic`。
+
+![undomerge-revert3](https://git-scm.com/book/en/v2/images/undomerge-revert3.png)
+
+在本例中，`M` 与 `^M` 抵消了。 `^^M` 事实上合并入了 `C3` 与` C4` 的修改，`C8` 合并了 `C7` 的修改，所以现在 `topic` 已 经完全被合并了。
+
+#### 其他类型的合并
+
+到目前为止我们介绍的都是通过一个叫作 “recursive” 的合并策略来正常处理的两个分支的正常合并。 然而还 有其他方式来合并两个分支到一起。 让我们来快速介绍其中的几个。
+
+##### 我们或他们的偏好
+
+默认情况下，当 Git 看到两个分支合并中的冲突时，它会将合并冲突标记添加到你的代码中并标记文件为冲突状态来让你解决。 如 果你希望 Git 简单地选择特定的一边并忽略另外一边而不是让你手动解决冲突，你可以传递给 merge 命令一个`-Xours` 或 `-Xtheirs` 参数。
+
+这个选项也可以传递给我们之前看到的 `git merge-file` 命令， 通过运行类似 `git merge-file --ours` 的命令来合并单个文件。
+
+##### 子树合并
+
+感觉很难用上
+
+### Rerere
+`git rerere` 功能是一个隐藏的功能。 正如它的名字“重用记录的解决方案（reuse recorded resolution）” 所示，它允许你让 Git 记住解决一个块冲突的方法， 这样在下一次看到相同冲突时，Git 可以为你自动地解决它。
+
+有几种情形下这个功能会非常有用。 在文档中提到的一个例子是想要保证一个长期分支会干净地合并，但是又 不想要一串中间的合并提交弄乱你的提交历史。 将 `rerere` 功能开启后，你可以试着偶尔合并，解决冲突，然后退出合并。 如果你持续这样做，那么最终的合并会很容易，因为 `rerere` 可以为你自动做所有的事情。
+
+可以将同样的策略用在维持一个变基的分支时，这样就不用每次解决同样的变基冲突了。 或者你将一个分支合 并并修复了一堆冲突后想要用变基来替代合并——你可能并不想要再次解决相同的冲突。
+
+另一个 `rerere` 的应用场景是当你偶尔将一堆正在改进的主题分支合并到一个可测试的头时，就像 Git 项目自身 经常做的。 如果测试失败，你可以倒回合并之前然后在去除导致测试失败的那个主题分支后重做合并，而不用再次重新解决所有的冲突。
+
+要启用 rerere 功能，只需运行以下配置选项即可：
+
+>git config --global rerere.enabled true
+
+你也可以通过在特定的仓库中创建 `.git/rr-cache` 目录来开启它，但是设置选项更干净并且可以应用到全 局。
+
+现在我们看一个简单的例子，类似之前的那个。 假设有一个名为 `hello.rb` 的文件如下：
+
+><pre>#! /usr/bin/env ruby def hello
+>
+>def hello
+>   puts 'hello world'
+>end</pre>
+
+在一个分支中修改单词 “hello” 为 “hola”，然后在另一个分支中修改 “world” 为 “mundo”，就像之前 一样。
+
+![rerere1](https://git-scm.com/book/en/v2/images/rerere1.png)
+
+当合并两个分支到一起时，我们将会得到一个合并冲突：
+
+>git merge i18n-world
+>Auto-merging hello.rb 
+>CONFLICT (content): Merge conflict in hello.rb 
+>Recorded preimage for 'hello.rb'
+>Automatic merge failed; fix conflicts and then commit the result.
+
+你会注意到那个新行 `Recorded preimage for FILE`。除此之外它应该看起来就像一个普通的合并冲突。 在这个时候，`rerere` 可以告诉我们几件事。 和往常一样，在这个时候你可以运行 `git status` 来查看所有冲突的内容：
+
+><pre>git status
+>On branch master
+>Unmerged paths:
+>   (use "git reset HEAD <file>..." to unstage)
+>   (use "git add <file>..." to mark resolution)
+>   
+>   both modified: hello.rb
+> </pre>
+
+然而，`git rerere` 也会通过 `git rerere status` 告诉你它记录的合并前状态。
+
+>git rerere status
+>hello.rb
+
+并且 `git rerere diff` 将会显示解决方案的当前状态——开始解决前与解决后的样子。
+
+解决之后提交。
+>git add hello hello.rb
+>git commit
+>Recorded resolution for 'hello.rb'.
+>[master 68e16e5] Merge branch 'i18n'
+
+可以看到它 "Recorded resolution for FILE"。
+
+![rerere2](https://git-scm.com/book/en/v2/images/rerere2.png)
+
+现在，让我们撤消那个合并然后将它变基到 `master` 分支顶部来替代它。 可以通过使用之前在 重置揭密 看到的 `git reset` 来回滚分支。
+
+>git reset --hard HEAD^
+>HEAD is now at ad63f15 i18n the hello
+
+我们的合并被撤消了。 现在让我们变基主题分支。
+
+>git checkout i18n-world
+>Switched to branch 'i18n-world'
+
+>git rebase master
+>First, rewinding head to replay your work on top of it...
+>Applying: i18n one word 
+>Using index info to reconstruct a base tree... 
+>Falling back to patching base and 3-way merge... 
+>Auto-merging hello.rb
+>CONFLICT (content): Merge conflict in hello.rb Resolved 'hello.rb' 
+>using previous resolution. Failed to merge in the changes.
+>Patch failed at 0001 i18n one word
+
+现在，正像我们期望的一样，得到了相同的合并冲突，但是看一下 `Resolved FILE using previous resolution` 这行。 如果我们看这个文件，会发现它已经被解决了，而且在它里面没有合并冲突标记。
+
+><pre>#! /usr/bin/env ruby
+>
+>def hello
+>   puts 'hola mundo'
+>end</pre>
+
+同样，git diff 将会显示出它是如何自动地重新解决的。
+
+![rerere3](https://git-scm.com/book/en/v2/images/rerere3.png)
+
+也可以通过 `git checkout` 命令重新恢复到冲突时候的文件状态：
+>git checkout --conflict=merge hello.rb
+>cat hello.rb
+
+我们将会在 高级合并 中看到这个的一个例子。 然而现在，让我们通过运行 `git rerere` 来重新解决它：
+>git rerere
+
+我们通过 `rerere` 缓存的解决方案来自动重新解决了文件冲突。 现在可以添加并继续变基来完成它。
+
+>git add hello.rb
+>git rebase --continue
+Applying: i18n one word
+
+所以，如果做了很多次重新合并，或者想要一个主题分支始终与你的 `master` 分支保持最新但却不想要一大堆合 并， 或者经常变基，打开 `rerere` 功能可以帮助你的生活变得更美好。
